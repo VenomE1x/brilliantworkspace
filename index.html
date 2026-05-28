@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم مساحة العمل</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="navbar">
+        <h1>إدارة مساحة العمل 🏢</h1>
+    </header>
+
+    <nav class="tabs-nav" id="tabsNav">
+        <button type="button" class="tab-btn active" data-tab="desksView">
+            <span class="tab-icon">🪑</span>
+            <span class="tab-label">إدارة المكاتب</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="clientsView">
+            <span class="tab-icon">👤</span>
+            <span class="tab-label">إدارة العملاء</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="inventoryView">
+            <span class="tab-icon">☕</span>
+            <span class="tab-label">المخزن والكافيتريا</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="financeView">
+            <span class="tab-icon">💰</span>
+            <span class="tab-label">الماليات والتقارير</span>
+        </button>
+    </nav>
+
+    <div class="container">
+
+        <!-- ==================== TAB 1: DESKS DASHBOARD ==================== -->
+        <div id="desksView" class="tab-content active">
+
+            <h2>حالة المكاتب (37 كرسي)</h2>
+            <section class="stats-row" aria-label="إحصائيات الكراسي">
+                <div class="stat-card stat-available">
+                    <span class="stat-label">الكراسي المتاحة</span>
+                    <span class="stat-value" id="availableCount">0</span>
+                </div>
+                <div class="stat-card stat-occupied">
+                    <span class="stat-label">الكراسي المشغولة</span>
+                    <span class="stat-value" id="occupiedCount">0</span>
+                </div>
+            </section>
+
+            <div class="desks-grid" id="desksGrid"></div>
+        </div>
+
+        <!-- ==================== TAB 2: CLIENT CRM ==================== -->
+        <div id="clientsView" class="tab-content">
+
+            <section class="crm-panel" id="crmPanel">
+                <h2 class="panel-title">تسجيل عميل جديد</h2>
+
+                <form id="registerClientForm">
+                    <div class="form-row crm-form-row">
+                        <div class="form-group">
+                            <label class="field-label" for="regClientName">الاسم</label>
+                            <input type="text" id="regClientName" class="text-input" placeholder="اسم العميل" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label" for="regClientPhone">رقم الهاتف</label>
+                            <input type="tel" id="regClientPhone" class="text-input" placeholder="01xxxxxxxxx" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label" for="regClientJobType">نوع العمل</label>
+                            <select id="regClientJobType" class="text-input select-input">
+                                <option value="student">طالب (Student)</option>
+                                <option value="freelancer">فريلانسر (Freelancer)</option>
+                                <option value="other">أخرى</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="field-label" for="regReferralCode">كود الدعوة (اختياري)</label>
+                            <input type="text" id="regReferralCode" class="text-input" placeholder="ادخل رقم العميل الذي أحالك (إن وجد)" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="field-label" for="promoCode">كود التسويق (اختياري)</label>
+                            <input type="text" id="promoCode" class="text-input" placeholder="كود التسويق (مثال: VORTEX)" autocomplete="off">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-register-client">حفظ العميل</button>
+                </form>
+            </section>
+
+            <section class="crm-panel clients-list-panel">
+                <h2 class="panel-title">قائمة العملاء المسجلين</h2>
+                <div class="crm-search-row">
+                    <input type="text" id="clientListFilter" class="text-input crm-search-input" placeholder="فلترة بالاسم أو الرقم..." autocomplete="off">
+                </div>
+                <div class="menu-table-wrap">
+                    <table class="menu-table clients-table" id="clientsTable">
+                        <thead>
+                            <tr>
+                                <th>الرقم</th>
+                                <th>الاسم</th>
+                                <th>الهاتف</th>
+                                <th>نوع العمل</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientsTableBody">
+                            <tr class="empty-row">
+                                <td colspan="4">لا يوجد عملاء مسجلين بعد</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Client Detail Modal -->
+            <div class="client-detail-overlay" id="clientDetailOverlay" hidden>
+                <div class="client-detail-modal">
+                    <button type="button" class="modal-close" id="closeClientDetail" aria-label="إغلاق">&times;</button>
+                    <h2 class="client-detail-title">بيانات العميل</h2>
+                    <div class="client-detail-body" id="clientDetailBody"></div>
+                                <div class="client-history-panel">
+                                    <h3 class="panel-title">سجل حركات العميل</h3>
+                                    <div class="menu-table-wrap">
+                                        <table class="menu-table" id="clientHistoryTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>الوقت والتاريخ</th>
+                                                    <th>نوع الحركة</th>
+                                                    <th>التفاصيل</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="clientHistoryBody">
+                                                <tr class="empty-row"><td colspan="3">لا توجد حركات للعميل بعد</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB 3: INVENTORY / CAFETERIA ==================== -->
+        <div id="inventoryView" class="tab-content">
+
+            <section class="cafeteria-panel" id="cafeteriaPanel">
+                <h2 class="panel-title">إدارة الكافيتريا والمخزون ☕</h2>
+
+                <form class="cafeteria-form" id="cafeteriaForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="field-label" for="itemName">اسم المنتج</label>
+                            <input type="text" id="itemName" class="text-input" placeholder="مثال: قهوة" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label" for="itemPrice">السعر (EG)</label>
+                            <input type="number" id="itemPrice" class="text-input" placeholder="0" min="0" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label" for="itemStock">الكمية في المخزن</label>
+                            <input type="number" id="itemStock" class="text-input" placeholder="0" min="0" step="1">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-cafeteria">إضافة للمنيو</button>
+                </form>
+
+                <div class="menu-table-wrap">
+                    <table class="menu-table" id="menuTable">
+                        <thead>
+                            <tr>
+                                <th>اسم المنتج</th>
+                                <th>السعر</th>
+                                <th>المخزون</th>
+                                <th>إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="menuTableBody">
+                            <tr class="empty-row">
+                                <td colspan="4">لا توجد منتجات في المنيو بعد</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== TAB 4: FINANCIALS & REPORTS ==================== -->
+        <div id="financeView" class="tab-content">
+
+            <section class="finance-panel">
+                <h2 class="panel-title">ملخص الإيرادات 💰</h2>
+                <div class="finance-stats-row">
+                    <div class="finance-stat-card finance-desks">
+                        <span class="finance-stat-label">إيرادات المكاتب</span>
+                        <span class="finance-stat-value" id="revDesks">0</span>
+                        <span class="finance-stat-unit">EG</span>
+                    </div>
+                    <div class="finance-stat-card finance-drinks">
+                        <span class="finance-stat-label">إيرادات الكافيتريا</span>
+                        <span class="finance-stat-value" id="revDrinks">0</span>
+                        <span class="finance-stat-unit">EG</span>
+                    </div>
+                    <div class="finance-stat-card finance-grand">
+                        <span class="finance-stat-label">الإجمالي الكلي</span>
+                        <span class="finance-stat-value" id="revGrand">0</span>
+                        <span class="finance-stat-unit">EG</span>
+                    </div>
+                        <div class="finance-stat-card finance-marketing">
+                            <span class="finance-stat-label">عدد عملاء التسويق</span>
+                            <span class="finance-stat-value" id="marketingCount">0</span>
+                        </div>
+                        <div class="finance-stat-card finance-marketing">
+                            <span class="finance-stat-label">إجمالي إيرادات التسويق</span>
+                            <span class="finance-stat-value" id="marketingRevenue">0</span>
+                            <span class="finance-stat-unit">EG</span>
+                        </div>
+                </div>
+                <button type="button" class="btn btn-close-shift" id="closeShiftBtn">تقفيل اليومية</button>
+            </section>
+
+            <section class="finance-panel">
+                <h2 class="panel-title">سجل الحركات المالي</h2>
+                <div class="menu-table-wrap">
+                    <table class="menu-table" id="transactionsTable">
+                        <thead>
+                            <tr>
+                                <th>الوقت والتاريخ</th>
+                                <th>نوع الحركة</th>
+                                <th>العميل</th>
+                                <th>المبلغ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody">
+                            <tr class="empty-row">
+                                <td colspan="4">لا توجد حركات مالية بعد</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay" hidden>
+        <div class="modal" id="modalBox" role="dialog" aria-labelledby="modalTitle">
+            <button type="button" class="modal-close" id="modalClose" aria-label="إغلاق">&times;</button>
+            <h2 id="modalTitle">حجز كرسي</h2>
+
+            <div id="bookingForm" hidden>
+
+                <!-- Embedded Client Search inside the Booking Modal -->
+                <div class="booking-client-section">
+                    <p class="field-label">اختر العميل</p>
+                    <div class="modal-client-search-wrap">
+                        <input type="text" id="modalClientSearch" class="text-input modal-client-search-input" placeholder="ابحث بالاسم أو رقم العميل..." autocomplete="off">
+                        <div class="modal-client-dropdown" id="modalClientDropdown"></div>
+                    </div>
+                    <div class="modal-selected-client" id="modalSelectedClient" hidden>
+                        <span class="selected-client-text" id="modalSelectedClientText"></span>
+                        <button type="button" class="btn-clear-selection" id="clearModalClient">&times;</button>
+                    </div>
+                </div>
+
+                <p class="field-label">اختر الباقة</p>
+                <div class="package-options" id="packageOptions"></div>
+
+                <button type="button" class="btn btn-primary" id="confirmBooking" disabled>تأكيد الحجز</button>
+            </div>
+
+            <div id="checkoutView" hidden>
+                <div class="checkout-details" id="checkoutDetails"></div>
+
+                <div class="modal-section">
+                    <h3 class="section-title">إضافة مشروبات</h3>
+                    <div class="drinks-list" id="drinksList"></div>
+                </div>
+
+                <div class="modal-section">
+                    <h3 class="section-title">طلبات الكرسي</h3>
+                    <div class="desk-orders" id="deskOrderSummary">
+                        <p class="empty-orders">لا توجد مشروبات مضافة بعد</p>
+                    </div>
+                    <div class="billing-summary" id="billingSummary"></div>
+                    <button type="button" class="btn btn-pay-drinks" id="payDrinksNow" disabled>دفع حساب المشاريب الآن</button>
+                </div>
+
+                <div class="checkout-actions">
+                    <button type="button" class="btn btn-danger" id="confirmCheckout">إنهاء الجلسة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
