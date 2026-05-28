@@ -1234,29 +1234,17 @@ function initApp() {
     tabsNav.addEventListener('click', (e) => {
         const btn = e.target.closest('.tab-btn');
         if (!btn) return;
-
+        
         const targetTab = btn.dataset.tab;
-        const protectedTabs = ['inventoryView', 'financeView'];
-
-        // If tab is protected, require session unlock
-        if (protectedTabs.includes(targetTab)) {
-            const unlocked = sessionStorage.getItem('isAdminUnlocked') === 'true';
-            if (!unlocked) {
-                const entered = prompt('برجاء إدخال كلمة مرور المسؤول:');
-                if (entered === null || entered !== ADMIN_PASSWORD) {
-                    alert('كلمة المرور غير صحيحة!');
-                    return; // abort tab switch
-                }
-                // correct password: mark session unlocked
-                sessionStorage.setItem('isAdminUnlocked', 'true');
+        
+        if (['inventoryView', 'financeView'].includes(targetTab)) {
+            if (prompt('برجاء إدخال كلمة مرور المسؤول:') !== ADMIN_PASSWORD) {
+                alert('كلمة المرور غير صحيحة!');
+                return; 
             }
         }
-
-        // Open the requested tab
+        
         switchTab(targetTab);
-        if (targetTab === 'financeView') {
-            updateMarketingStats();
-        }
     });
 
     cafeteriaForm.addEventListener('submit', handleAddMenuItem);
