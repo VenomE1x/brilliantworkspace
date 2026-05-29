@@ -327,16 +327,19 @@ function renderClientsList(filterQuery) {
     }
 
     if (list.length === 0) {
-        clientsTableBody.innerHTML = `<tr class="empty-row"><td colspan="4">${q ? 'لا يوجد عملاء مطابقين' : 'لا يوجد عملاء مسجلين بعد'}</td></tr>`;
+        // خليناها colspan="5" عشان تناسب الـ 5 أعمدة الجداد
+        clientsTableBody.innerHTML = `<tr class="empty-row"><td colspan="5">${q ? 'لا يوجد عملاء مطابقين' : 'لا يوجد عملاء مسجلين بعد'}</td></tr>`;
         return;
     }
 
+    // ضفنا السطر بتاع c.source في الخانات
     clientsTableBody.innerHTML = list.map((c) => `
         <tr data-client-id="${c.uniqueCode}">
             <td>${c.uniqueCode}</td>
             <td>${c.name}</td>
             <td>${c.phone}</td>
             <td>${getJobTypeLabel(c.jobType)}</td>
+            <td>${c.source || 'أخرى'}</td>
         </tr>
     `).join('');
 }
