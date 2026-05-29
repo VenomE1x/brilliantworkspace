@@ -38,6 +38,7 @@ let transactionsLog = [];
 const desksGrid = document.getElementById('desksGrid');
 const availableCountEl = document.getElementById('availableCount');
 const occupiedCountEl = document.getElementById('occupiedCount');
+const regClientSourceInput = document.getElementById('regClientSource');
 const tabsNav = document.getElementById('tabsNav');
 const modalOverlay = document.getElementById('modalOverlay');
 const modalBox = document.getElementById('modalBox');
@@ -97,6 +98,7 @@ function saveClientsDB() {
         name: c.name,
         phone: c.phone,
         job_type: c.jobType,
+        source: c.source || 'أخرى',
         promo_code: c.promoCode || '',
         total_hours: c.totalHoursBooked || 0,
         total_money: c.totalMoneyPaid || 0,
@@ -171,6 +173,7 @@ function renderClientCardHTML(client) {
         <p><strong>الاسم:</strong> ${client.name}</p>
         <p><strong>الهاتف:</strong> ${client.phone}</p>
         <p><strong>نوع العمل:</strong> ${getJobTypeLabel(client.jobType)}</p>
+        <p><strong>مصدر العميل:</strong> ${client.source || 'أخرى'}</p>
         <p><strong>إجمالي الساعات:</strong> ${(client.totalHoursBooked || 0).toFixed(1)} ساعة</p>
         <p><strong>إجمالي المبالغ المدفوعة:</strong> ${(client.totalMoneyPaid || 0)} EG</p>
     `;
@@ -230,6 +233,7 @@ function handleRegisterClient(e) {
     const name = regClientNameInput.value.trim();
     const phone = normalizePhone(regClientPhoneInput.value);
     const jobType = regClientJobTypeInput.value;
+    const source = regClientSourceInput ? regClientSourceInput.value : 'أخرى';
     const referralCode = regReferralCodeInput ? regReferralCodeInput.value.trim() : '';
 
     if (!name) {
@@ -257,6 +261,7 @@ function handleRegisterClient(e) {
         name,
         phone,
         jobType,
+        source: source,
         freeHoursBalance: 0,
         totalHoursBooked: 0,
         totalMoneyPaid: 0,
@@ -346,6 +351,7 @@ function openClientDetail(clientId) {
         <p><strong>الاسم:</strong> ${client.name}</p>
         <p><strong>الهاتف:</strong> ${client.phone}</p>
         <p><strong>نوع العمل:</strong> ${getJobTypeLabel(client.jobType)}</p>
+        <p><strong>مصدر العميل:</strong> ${client.source || 'أخرى'}</p>
         <div class="client-detail-stats">
             <div class="client-stat-card stat-hours">
                 <span class="client-stat-label">إجمالي الساعات</span>
@@ -1181,6 +1187,7 @@ async function syncFromCloud() {
                 name: c.name,
                 phone: c.phone,
                 jobType: c.job_type,
+                source: c.source || 'أخرى',
                 promoCode: c.promo_code || '',
                 totalHoursBooked: c.total_hours || 0,
                 totalMoneyPaid: c.total_money || 0,
