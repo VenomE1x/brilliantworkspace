@@ -39,6 +39,7 @@ const desksGrid = document.getElementById('desksGrid');
 const availableCountEl = document.getElementById('availableCount');
 const occupiedCountEl = document.getElementById('occupiedCount');
 const regClientSourceInput = document.getElementById('regClientSource');
+const regClientStatusInput = document.getElementById('regClientStatus'); // إضافة المتغير الجديد
 const tabsNav = document.getElementById('tabsNav');
 const modalOverlay = document.getElementById('modalOverlay');
 const modalBox = document.getElementById('modalBox');
@@ -99,6 +100,7 @@ function saveClientsDB() {
         phone: c.phone,
         job_type: c.jobType,
         source: c.source || 'أخرى',
+        client_status: c.clientStatus || 'عميل جديد', // إضافة الرفع للسحابة
         promo_code: c.promoCode || '',
         total_hours: c.totalHoursBooked || 0,
         total_money: c.totalMoneyPaid || 0,
@@ -174,6 +176,7 @@ function renderClientCardHTML(client) {
         <p><strong>الهاتف:</strong> ${client.phone}</p>
         <p><strong>نوع العمل:</strong> ${getJobTypeLabel(client.jobType)}</p>
         <p><strong>مصدر العميل:</strong> ${client.source || 'أخرى'}</p>
+        <p><strong>حالة العميل:</strong> ${client.clientStatus || 'عميل جديد'}</p>
         <p><strong>إجمالي الساعات:</strong> ${(client.totalHoursBooked || 0).toFixed(1)} ساعة</p>
         <p><strong>إجمالي المبالغ المدفوعة:</strong> ${(client.totalMoneyPaid || 0)} EG</p>
     `;
@@ -234,6 +237,7 @@ function handleRegisterClient(e) {
     const phone = normalizePhone(regClientPhoneInput.value);
     const jobType = regClientJobTypeInput.value;
     const source = regClientSourceInput ? regClientSourceInput.value : 'أخرى';
+    const clientStatus = regClientStatusInput ? regClientStatusInput.value : 'عميل جديد'; // استقبال حالة العميل
     const referralCode = regReferralCodeInput ? regReferralCodeInput.value.trim() : '';
 
     if (!name) {
@@ -262,6 +266,7 @@ function handleRegisterClient(e) {
         phone,
         jobType,
         source: source,
+        clientStatus: clientStatus, // إضافة حالة العميل للأوبجكت
         freeHoursBalance: 0,
         totalHoursBooked: 0,
         totalMoneyPaid: 0,
@@ -327,12 +332,12 @@ function renderClientsList(filterQuery) {
     }
 
     if (list.length === 0) {
-        // خليناها colspan="5" عشان تناسب الـ 5 أعمدة الجداد
-        clientsTableBody.innerHTML = `<tr class="empty-row"><td colspan="5">${q ? 'لا يوجد عملاء مطابقين' : 'لا يوجد عملاء مسجلين بعد'}</td></tr>`;
+        // تحديث الـ colspan لـ 6 عشان يغطي الجدول بالكامل
+        clientsTableBody.innerHTML = `<tr class="empty-row"><td colspan="6">${q ? 'لا يوجد عملاء مطابقين' : 'لا يوجد عملاء مسجلين بعد'}</td></tr>`;
         return;
     }
 
-    // ضفنا السطر بتاع c.source في الخانات
+    // إضافة خانة المصدر وحالة العميل لرسمة الجدول
     clientsTableBody.innerHTML = list.map((c) => `
         <tr data-client-id="${c.uniqueCode}">
             <td>${c.uniqueCode}</td>
@@ -340,6 +345,7 @@ function renderClientsList(filterQuery) {
             <td>${c.phone}</td>
             <td>${getJobTypeLabel(c.jobType)}</td>
             <td>${c.source || 'أخرى'}</td>
+            <td>${c.clientStatus || 'عميل جديد'}</td>
         </tr>
     `).join('');
 }
@@ -355,6 +361,7 @@ function openClientDetail(clientId) {
         <p><strong>الهاتف:</strong> ${client.phone}</p>
         <p><strong>نوع العمل:</strong> ${getJobTypeLabel(client.jobType)}</p>
         <p><strong>مصدر العميل:</strong> ${client.source || 'أخرى'}</p>
+        <p><strong>حالة العميل:</strong> ${client.clientStatus || 'عميل جديد'}</p>
         <div class="client-detail-stats">
             <div class="client-stat-card stat-hours">
                 <span class="client-stat-label">إجمالي الساعات</span>
@@ -1191,6 +1198,7 @@ async function syncFromCloud() {
                 phone: c.phone,
                 jobType: c.job_type,
                 source: c.source || 'أخرى',
+                clientStatus: c.client_status || 'عميل جديد', // إضافة السحب من السحابة
                 promoCode: c.promo_code || '',
                 totalHoursBooked: c.total_hours || 0,
                 totalMoneyPaid: c.total_money || 0,
@@ -1244,17 +1252,29 @@ function initApp() {
     tabsNav.addEventListener('click', (e) => {
         const btn = e.target.closest('.tab-btn');
         if (!btn) return;
-        
+
         const targetTab = btn.dataset.tab;
-        
-        if (['inventoryView', 'financeView'].includes(targetTab)) {
-            if (prompt('برجاء إدخال كلمة مرور المسؤول:') !== ADMIN_PASSWORD) {
-                alert('كلمة المرور غير صحيحة!');
-                return; 
+        const protectedTabs = ['inventoryView', 'financeView'];
+
+        // If tab is protected, require session unlock
+        if (protectedTabs.includes(targetTab)) {
+            const unlocked = sessionStorage.getItem('isAdminUnlocked') === 'true';
+            if (!unlocked) {
+                const entered = prompt('برجاء إدخال كلمة مرور المسؤول:');
+                if (entered === null || entered !== ADMIN_PASSWORD) {
+                    alert('كلمة المرور غير صحيحة!');
+                    return; // abort tab switch
+                }
+                // correct password: mark session unlocked
+                sessionStorage.setItem('isAdminUnlocked', 'true');
             }
         }
-        
+
+        // Open the requested tab
         switchTab(targetTab);
+        if (targetTab === 'financeView') {
+            updateMarketingStats();
+        }
     });
 
     cafeteriaForm.addEventListener('submit', handleAddMenuItem);
