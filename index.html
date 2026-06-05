@@ -281,6 +281,17 @@
                         <input type="text" id="modalClientSearch" class="text-input modal-client-search-input" placeholder="ابحث بالاسم أو رقم العميل..." autocomplete="off">
                         <div class="modal-client-dropdown" id="modalClientDropdown"></div>
                     </div>
+                   <div id="freeHoursSection" hidden style="margin-top: 15px; padding: 12px; background: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1; border-radius: 8px;">
+    <p style="margin: 0 0 10px 0; color: #fff; font-size: 0.95rem;">إجمالي رصيد الساعات المجانية: <strong id="modalClientFreeHours" style="color: #4ade80;">0</strong> ساعة</p>
+    
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+        <label style="color: #a5b4fc; font-size: 0.9rem;">
+            تحديد الساعات المراد استخدامها: <strong id="freeHoursSelectedCount" style="color: #fff;">0</strong>
+        </label>
+        <input type="range" id="freeHoursSlider" min="0" max="0" value="0" style="width: 100%; cursor: pointer; accent-color: #4ade80;">
+        <p style="margin: 0; font-size: 0.85rem; color: #4ade80;">قيمة الخصم: <strong id="freeHoursDiscountText">0</strong> EG</p>
+    </div>
+</div>
                     <div class="modal-selected-client" id="modalSelectedClient" hidden>
                         <span class="selected-client-text" id="modalSelectedClientText"></span>
                         <button type="button" class="btn-clear-selection" id="clearModalClient">&times;</button>
