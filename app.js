@@ -24,7 +24,7 @@ const PACKAGES = [
     { id: '1month', name: '1 Month', nameAr: 'شهر واحد', price: 1000, durationMs: 30 * 24 * 60 * 60 * 1000 },
 ];
 
-const totalDesks = 37;
+const totalDesks = 39;
 const desks = [];
 let cafeteriaMenu = [];
 let clientsDB = [];
@@ -39,7 +39,7 @@ const desksGrid = document.getElementById('desksGrid');
 const availableCountEl = document.getElementById('availableCount');
 const occupiedCountEl = document.getElementById('occupiedCount');
 const regClientSourceInput = document.getElementById('regClientSource');
-const regClientStatusInput = document.getElementById('regClientStatus'); // إضافة المتغير الجديد
+const regClientStatusInput = document.getElementById('regClientStatus');
 const tabsNav = document.getElementById('tabsNav');
 const modalOverlay = document.getElementById('modalOverlay');
 const modalBox = document.getElementById('modalBox');
@@ -63,6 +63,14 @@ const modalClientDropdown = document.getElementById('modalClientDropdown');
 const modalSelectedClientEl = document.getElementById('modalSelectedClient');
 const modalSelectedClientText = document.getElementById('modalSelectedClientText');
 const clearModalClientBtn = document.getElementById('clearModalClient');
+const freeHoursSection = document.getElementById('freeHoursSection');
+const modalClientFreeHours = document.getElementById('modalClientFreeHours');
+
+// متغيرات السلايدر الجديدة
+const freeHoursSlider = document.getElementById('freeHoursSlider');
+const freeHoursSelectedCount = document.getElementById('freeHoursSelectedCount');
+const freeHoursDiscountText = document.getElementById('freeHoursDiscountText');
+
 const packageOptions = document.getElementById('packageOptions');
 const confirmBooking = document.getElementById('confirmBooking');
 const checkoutDetails = document.getElementById('checkoutDetails');
@@ -100,11 +108,12 @@ function saveClientsDB() {
         phone: c.phone,
         job_type: c.jobType,
         source: c.source || 'أخرى',
-        client_status: c.clientStatus || 'عميل جديد', // إضافة الرفع للسحابة
+        client_status: c.clientStatus || 'عميل جديد',
         promo_code: c.promoCode || '',
         total_hours: c.totalHoursBooked || 0,
         total_money: c.totalMoneyPaid || 0,
-        history: c.history || []
+        history: c.history || [],
+        free_hours_balance: c.freeHoursBalance || 0,
     }));
     db.from('clients').upsert(mappedClients).then(({ data, error }) => {
         if (error) {
@@ -120,11 +129,9 @@ function loadClientsDB() {
     try {
         const raw = localStorage.getItem(CLIENTS_DB_KEY);
         clientsDB = raw ? JSON.parse(raw) : [];
-        // Migrate old clients: add missing tracking fields
         clientsDB.forEach((c) => {
             if (c.totalHoursBooked === undefined) c.totalHoursBooked = 0;
             if (c.totalMoneyPaid === undefined) c.totalMoneyPaid = 0;
-            // ensure history array exists for each client
             if (!Array.isArray(c.history)) c.history = [];
         });
     } catch (err) {
@@ -191,7 +198,6 @@ function switchTab(tabId) {
     if (targetBtn) targetBtn.classList.add('active');
 }
 
-// ===== Modal embedded client search =====
 function filterClients(query) {
     const q = query.trim().toLowerCase();
     if (!q) return clientsDB;
@@ -218,6 +224,23 @@ function selectModalClient(client) {
     modalSelectedClientEl.hidden = false;
     modalClientSearchInput.value = '';
     modalClientDropdown.classList.remove('open');
+    
+    // تحديث السلايدر والرصيد
+    const balance = client.freeHoursBalance || 0;
+    if (modalClientFreeHours) modalClientFreeHours.textContent = balance;
+    
+    if (freeHoursSection) freeHoursSection.hidden = false;
+    
+    if (freeHoursSlider) {
+        freeHoursSlider.max = balance;
+        // افتراضياً نحدد 1 ساعة لو رصيده يسمح، وإلا 0
+        const defaultUse = balance > 0 ? 1 : 0;
+        freeHoursSlider.value = defaultUse;
+        
+        if (freeHoursSelectedCount) freeHoursSelectedCount.textContent = defaultUse;
+        if (freeHoursDiscountText) freeHoursDiscountText.textContent = defaultUse * 10;
+    }
+
     updateConfirmButton();
 }
 
@@ -227,17 +250,24 @@ function clearModalClient() {
     modalSelectedClientText.textContent = '';
     modalClientSearchInput.value = '';
     modalClientDropdown.classList.remove('open');
+    
+    if(freeHoursSection) freeHoursSection.hidden = true;
+    if(freeHoursSlider) {
+        freeHoursSlider.value = 0;
+        freeHoursSlider.max = 0;
+        if (freeHoursSelectedCount) freeHoursSelectedCount.textContent = '0';
+        if (freeHoursDiscountText) freeHoursDiscountText.textContent = '0';
+    }
     updateConfirmButton();
 }
 
-// ===== CRM Tab Register =====
 function handleRegisterClient(e) {
     e.preventDefault();
     const name = regClientNameInput.value.trim();
     const phone = normalizePhone(regClientPhoneInput.value);
     const jobType = regClientJobTypeInput.value;
     const source = regClientSourceInput ? regClientSourceInput.value : 'أخرى';
-    const clientStatus = regClientStatusInput ? regClientStatusInput.value : 'عميل جديد'; // استقبال حالة العميل
+    const clientStatus = regClientStatusInput ? regClientStatusInput.value : 'عميل جديد';
     const referralCode = regReferralCodeInput ? regReferralCodeInput.value.trim() : '';
 
     if (!name) {
@@ -259,14 +289,13 @@ function handleRegisterClient(e) {
         return;
     }
 
-    // prepare new client object
     const newClient = {
         uniqueCode: generateNextId(),
         name,
         phone,
         jobType,
         source: source,
-        clientStatus: clientStatus, // إضافة حالة العميل للأوبجكت
+        clientStatus: clientStatus,
         freeHoursBalance: 0,
         totalHoursBooked: 0,
         totalMoneyPaid: 0,
@@ -274,7 +303,6 @@ function handleRegisterClient(e) {
         promoCode: regPromoCodeInput ? (regPromoCodeInput.value.trim().toUpperCase() || '') : '',
     };
 
-    // If referral code provided, validate it exists and record history for both parties
     if (referralCode) {
         const referrer = getClientById(referralCode);
         if (!referrer) {
@@ -283,39 +311,36 @@ function handleRegisterClient(e) {
             return;
         }
 
-        // link referral on the new client
         newClient.referredBy = String(referrer.uniqueCode);
 
-        // add history entry to new client
         try {
             const ts = new Date().toLocaleString('ar-EG');
+            newClient.freeHoursBalance = 1;
             newClient.history.push({
                 timestamp: ts,
                 action: 'تسجيل جديد',
-                details: `تم التسجيل عن طريق كود دعوة من العميل رقم ${referrer.uniqueCode}`,
+                details: 'تم التسجيل بكود دعوة: إضافة 1 ساعة مجانية للرصيد',
             });
         } catch (err) {
             console.error('Failed to add referral history to new client:', err);
         }
 
-        // add history entry to referrer (no rewards given)
         try {
             referrer.history = referrer.history || [];
+            referrer.freeHoursBalance = (referrer.freeHoursBalance || 0) + 1;
             const ts2 = new Date().toLocaleString('ar-EG');
             referrer.history.push({
                 timestamp: ts2,
                 action: 'دعوة صديق',
-                details: `قام بدعوة العميل الجديد: ${name}`,
+                details: `قام بدعوة العميل ${name}: إضافة 1 ساعة مجانية للرصيد`,
             });
         } catch (err) {
             console.error('Failed to add referral history to referrer:', err);
         }
     }
 
-    // finalize registration
     clientsDB.push(newClient);
     saveClientsDB();
-    // update marketing stats in case this registration used a promo code
     updateMarketingStats();
     registerClientForm.reset();
     renderClientsList();
@@ -323,7 +348,6 @@ function handleRegisterClient(e) {
     alert(`تم تسجيل العميل بنجاح!\nرقم العميل: ${newClient.uniqueCode}`);
 }
 
-// ===== Client List & Detail =====
 function renderClientsList(filterQuery) {
     const q = (filterQuery || '').trim().toLowerCase();
     let list = clientsDB;
@@ -332,12 +356,10 @@ function renderClientsList(filterQuery) {
     }
 
     if (list.length === 0) {
-        // تحديث الـ colspan لـ 6 عشان يغطي الجدول بالكامل
         clientsTableBody.innerHTML = `<tr class="empty-row"><td colspan="6">${q ? 'لا يوجد عملاء مطابقين' : 'لا يوجد عملاء مسجلين بعد'}</td></tr>`;
         return;
     }
 
-    // إضافة خانة المصدر وحالة العميل لرسمة الجدول
     clientsTableBody.innerHTML = list.map((c) => `
         <tr data-client-id="${c.uniqueCode}">
             <td>${c.uniqueCode}</td>
@@ -373,12 +395,10 @@ function openClientDetail(clientId) {
             </div>
         </div>
     `;
-    // render client history table (newest first)
     renderClientHistory(client);
     clientDetailOverlay.hidden = false;
 }
 
-// Render client's history into the client detail modal
 function renderClientHistory(client) {
     const tbody = document.getElementById('clientHistoryBody');
     if (!tbody) return;
@@ -389,7 +409,6 @@ function renderClientHistory(client) {
         return;
     }
 
-    // newest first
     const rows = [...history].reverse().map((h) => `
         <tr>
             <td>${h.timestamp}</td>
@@ -405,7 +424,6 @@ function closeClientDetail() {
     clientDetailOverlay.hidden = true;
 }
 
-// ===== Finance & Revenue Tracking =====
 function getTodayString() {
     const d = new Date();
     const year = d.getFullYear();
@@ -464,7 +482,6 @@ function renderFinanceView() {
         return;
     }
 
-    // Show newest first
     const reversed = [...transactionsLog].reverse();
     transactionsTableBody.innerHTML = reversed.map((t) => {
         const rowClass = t.type === 'تقفيل يومية' ? ' class="tr-shift-closed"' : '';
@@ -476,11 +493,9 @@ function renderFinanceView() {
         </tr>`;
     }).join('');
 
-    // update marketing stats whenever finance view renders
     updateMarketingStats();
 }
 
-// Marketing stats: count and revenue for promo code 'VORTEX'
 function updateMarketingStats() {
     try {
         loadClientsDB();
@@ -521,7 +536,6 @@ function checkAndAutoCloseShift() {
             const grandTotal = shiftRevenue.desks + shiftRevenue.drinks;
             const oldDate = shiftRevenue.currentShiftDate;
             
-            // Log automatic close for the old day
             addTransaction('تقفيل تلقائي - نظام الأمان (تغيير اليوم)', `يوم ${oldDate}`, grandTotal);
         }
 
@@ -574,17 +588,19 @@ function getDrinksTotal(desk) {
 }
 
 function getGrandTotal(desk) {
-    return (desk.price || 0) + getDrinksTotal(desk);
+    const packageNet = Math.max(0, (desk.price || 0) - (desk.discount || 0));
+    return packageNet + getDrinksTotal(desk);
 }
 
 function saveDesksData() {
-    const data = desks.map(({ id, status, clientName, clientCode, packageId, price, endTime, orders }) => ({
+    const data = desks.map(({ id, status, clientName, clientCode, packageId, price, discount, endTime, orders }) => ({
         id,
         status,
         clientName,
         clientCode,
         packageId,
         price,
+        discount: discount || 0,
         endTime,
         orders: orders || [],
     }));
@@ -608,6 +624,7 @@ function loadDesksData() {
             desk.clientCode = savedDesk.clientCode || null;
             desk.packageId = savedDesk.packageId;
             desk.price = savedDesk.price;
+            desk.discount = savedDesk.discount || 0;
             desk.endTime = savedDesk.endTime;
             desk.orders = savedDesk.orders || [];
         });
@@ -775,11 +792,18 @@ function updatePayDrinksButton(desk) {
 
 function renderBillingSummary(desk) {
     const packageCost = desk.price || 0;
+    const discount = desk.discount || 0;
     const drinksCost = getDrinksTotal(desk);
     const grandTotal = getGrandTotal(desk);
 
+    let discountHTML = '';
+    if (discount > 0) {
+        discountHTML = `<div class="billing-line" style="color: #4ade80;"><span>خصم (ساعات مجانية):</span><span>-${discount} EG</span></div>`;
+    }
+
     billingSummary.innerHTML = `
         <div class="billing-line"><span>الباقة:</span><span>${packageCost} EG</span></div>
+        ${discountHTML}
         <div class="billing-line billing-drinks-unpaid"><span>المشروبات (غير مدفوعة):</span><span>${drinksCost} EG</span></div>
         <div class="billing-line billing-grand"><span>الإجمالي الحالي:</span><span>${grandTotal} EG</span></div>
     `;
@@ -799,13 +823,11 @@ function payDrinksNow(deskId) {
         return;
     }
 
-    // Track drinks cost to client stats immediately
     if (desk.clientCode) {
         loadClientsDB();
         const client = getClientById(desk.clientCode);
         if (client) {
                 client.totalMoneyPaid = (client.totalMoneyPaid || 0) + drinksCost;
-                // push drinks purchase history
                 try {
                     const ts = new Date().toLocaleString('ar-EG');
                     client.history = client.history || [];
@@ -822,7 +844,6 @@ function payDrinksNow(deskId) {
         }
     }
 
-    // Record drinks transaction
     const clientLabel = `${desk.clientCode || '—'} - ${desk.clientName || '—'}`;
     addTransaction('كافيتريا', clientLabel, drinksCost);
     shiftRevenue.drinks += drinksCost;
@@ -1041,19 +1062,21 @@ function closeModal() {
 
 function showCheckoutBillAlert(desk) {
     const packageCost = desk.price || 0;
+    const discount = desk.discount || 0;
     const drinksCost = getDrinksTotal(desk);
     const grandTotal = getGrandTotal(desk);
 
     let drinksBreakdown = '';
     if (desk.orders?.length) {
-        drinksBreakdown =
-            '\n\nتفاصيل المشروبات:\n' +
-            desk.orders.map((o) => `• ${o.name} × ${o.qty} = ${o.price * o.qty} EG`).join('\n');
+        drinksBreakdown = '\n\nتفاصيل المشروبات:\n' + desk.orders.map((o) => `• ${o.name} × ${o.qty} = ${o.price * o.qty} EG`).join('\n');
     }
+
+    let discountText = discount > 0 ? `الخصم: -${discount} EG\n` : '';
 
     alert(
         `تم إنهاء الجلسة بنجاح ✅\n\n` +
             `الباقة: ${packageCost} EG\n` +
+            discountText +
             `المشروبات: ${drinksCost} EG` +
             drinksBreakdown +
             `\n────────────────\n` +
@@ -1074,6 +1097,7 @@ function checkoutDesk(deskId, options = {}) {
     desk.clientCode = null;
     desk.packageId = null;
     desk.price = null;
+    desk.discount = null;
     desk.endTime = null;
     desk.orders = [];
 
@@ -1105,42 +1129,57 @@ function bookDesk() {
     const pkg = getPackageById(selectedPackageId);
     const desk = desks[activeDeskId - 1];
 
+    // استخراج قيمة السلايدر
+    let usedFreeHoursCount = 0;
+    let discountAmt = 0;
+    if (freeHoursSlider) {
+        usedFreeHoursCount = parseInt(freeHoursSlider.value, 10) || 0;
+        discountAmt = usedFreeHoursCount * 10;
+    }
+    const finalPackagePrice = Math.max(0, pkg.price - discountAmt);
+
     desk.status = 'occupied';
     desk.clientName = modalSelectedClient.name;
     desk.clientCode = modalSelectedClient.uniqueCode;
     desk.packageId = selectedPackageId;
     desk.price = pkg.price;
+    desk.discount = discountAmt;
     desk.endTime = Date.now() + pkg.durationMs;
     desk.orders = [];
 
-    // Track package stats to client immediately at booking time
     loadClientsDB();
     const bookedClient = getClientById(modalSelectedClient.uniqueCode);
     if (bookedClient) {
         const sessionHours = pkg.durationMs / (60 * 60 * 1000);
         bookedClient.totalHoursBooked = (bookedClient.totalHoursBooked || 0) + sessionHours;
-        bookedClient.totalMoneyPaid = (bookedClient.totalMoneyPaid || 0) + pkg.price;
-        // push client activity history
+        bookedClient.totalMoneyPaid = (bookedClient.totalMoneyPaid || 0) + finalPackagePrice;
+        
+        if (usedFreeHoursCount > 0) {
+            bookedClient.freeHoursBalance = Math.max(0, (bookedClient.freeHoursBalance || 0) - usedFreeHoursCount);
+        }
+
         try {
             const ts = new Date().toLocaleString('ar-EG');
             bookedClient.history = bookedClient.history || [];
+            let histMsg = `حجز كرسي رقم ${desk.id} - باقة ${pkg.nameAr} بقيمة ${finalPackagePrice} ج.م`;
+            if (usedFreeHoursCount > 0) histMsg += ` (تم استخدام ${usedFreeHoursCount} ساعة مجانية)`;
+
             bookedClient.history.push({
                 timestamp: ts,
-                action: 'حجز مكتب',
-                details: `حجز كرسي رقم ${desk.id} - باقة ${pkg.nameAr} بقيمة ${pkg.price} ج.م`,
+                action: usedFreeHoursCount > 0 ? `حجز مكتب (خصم ${usedFreeHoursCount} ساعة)` : 'حجز مكتب',
+                details: histMsg,
             });
         } catch (err) {
-            console.error('Failed to append client history:', err);
+            console.error('Failed to append history:', err);
         }
 
         saveClientsDB();
         renderClientsList(clientListFilter.value);
     }
 
-    // Record desk booking transaction
     const clientLabel = `${modalSelectedClient.uniqueCode} - ${modalSelectedClient.name}`;
-    addTransaction('حجز مكتب', clientLabel, pkg.price);
-    shiftRevenue.desks += pkg.price;
+    addTransaction('حجز مكتب', clientLabel, finalPackagePrice);
+    shiftRevenue.desks += finalPackagePrice;
     saveShiftRevenue();
     renderFinanceView();
 
@@ -1172,6 +1211,7 @@ function initDesks() {
             clientCode: null,
             packageId: null,
             price: null,
+            discount: null,
             endTime: null,
             orders: [],
             element: deskCard,
@@ -1198,12 +1238,12 @@ async function syncFromCloud() {
                 phone: c.phone,
                 jobType: c.job_type,
                 source: c.source || 'أخرى',
-                clientStatus: c.client_status || 'عميل جديد', // إضافة السحب من السحابة
+                clientStatus: c.client_status || 'عميل جديد',
                 promoCode: c.promo_code || '',
                 totalHoursBooked: c.total_hours || 0,
                 totalMoneyPaid: c.total_money || 0,
                 history: c.history || [],
-                freeHoursBalance: 0
+                freeHoursBalance: c.free_hours_balance || 0
             }));
             localStorage.setItem(CLIENTS_DB_KEY, JSON.stringify(clientsDB));
             renderClientsList();
@@ -1248,29 +1288,34 @@ function initApp() {
     renderClientsList();
     renderFinanceView();
 
-    // Tab navigation with admin-protected tabs (Inventory & Financials)
+    // تشغيل السلايدر لعرض الخصم مباشر
+    if (freeHoursSlider) {
+        freeHoursSlider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (freeHoursSelectedCount) freeHoursSelectedCount.textContent = val;
+            if (freeHoursDiscountText) freeHoursDiscountText.textContent = val * 10;
+        });
+    }
+
     tabsNav.addEventListener('click', (e) => {
         const btn = e.target.closest('.tab-btn');
         if (!btn) return;
 
         const targetTab = btn.dataset.tab;
-        const protectedTabs = ['inventoryView', 'financeView'];
+        const protectedTabs = ['inventoryView'];
 
-        // If tab is protected, require session unlock
         if (protectedTabs.includes(targetTab)) {
             const unlocked = sessionStorage.getItem('isAdminUnlocked') === 'true';
             if (!unlocked) {
                 const entered = prompt('برجاء إدخال كلمة مرور المسؤول:');
                 if (entered === null || entered !== ADMIN_PASSWORD) {
                     alert('كلمة المرور غير صحيحة!');
-                    return; // abort tab switch
+                    return; 
                 }
-                // correct password: mark session unlocked
                 sessionStorage.setItem('isAdminUnlocked', 'true');
             }
         }
 
-        // Open the requested tab
         switchTab(targetTab);
         if (targetTab === 'financeView') {
             updateMarketingStats();
@@ -1289,30 +1334,24 @@ function initApp() {
         if (btn) addDrinkToDesk(parseInt(btn.dataset.deskId, 10), btn.dataset.itemId);
     });
 
-    // CRM tab register
     registerClientForm.addEventListener('submit', handleRegisterClient);
 
-    // Finance tab
     closeShiftBtn.addEventListener('click', handleCloseShift);
 
-    // Client list filter
     clientListFilter.addEventListener('input', () => {
         renderClientsList(clientListFilter.value);
     });
 
-    // Client list row click → open detail
     clientsTableBody.addEventListener('click', (e) => {
         const row = e.target.closest('tr[data-client-id]');
         if (row) openClientDetail(row.dataset.clientId);
     });
 
-    // Close client detail modal
     closeClientDetailBtn.addEventListener('click', closeClientDetail);
     clientDetailOverlay.addEventListener('click', (e) => {
         if (e.target === clientDetailOverlay) closeClientDetail();
     });
 
-    // Modal embedded client search
     modalClientSearchInput.addEventListener('input', () => {
         renderModalClientDropdown(modalClientSearchInput.value);
     });
@@ -1327,7 +1366,6 @@ function initApp() {
     });
     clearModalClientBtn.addEventListener('click', clearModalClient);
 
-    // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.modal-client-search-wrap')) {
             modalClientDropdown.classList.remove('open');
