@@ -66,7 +66,6 @@ const clearModalClientBtn = document.getElementById('clearModalClient');
 const freeHoursSection = document.getElementById('freeHoursSection');
 const modalClientFreeHours = document.getElementById('modalClientFreeHours');
 
-// متغيرات السلايدر الجديدة
 const freeHoursSlider = document.getElementById('freeHoursSlider');
 const freeHoursSelectedCount = document.getElementById('freeHoursSelectedCount');
 const freeHoursDiscountText = document.getElementById('freeHoursDiscountText');
@@ -89,7 +88,6 @@ const revDrinksEl = document.getElementById('revDrinks');
 const revGrandEl = document.getElementById('revGrand');
 const marketingCountEl = document.getElementById('marketingCount');
 const marketingRevenueEl = document.getElementById('marketingRevenue');
-const closeShiftBtn = document.getElementById('closeShiftBtn');
 const transactionsTableBody = document.getElementById('transactionsTableBody');
 
 function getPackageById(id) {
@@ -548,20 +546,6 @@ function checkAndAutoCloseShift() {
         shiftRevenue.currentShiftDate = todayStr;
         saveShiftRevenue();
     }
-}
-
-function handleCloseShift() {
-    const grandTotal = shiftRevenue.desks + shiftRevenue.drinks;
-    if (!confirm('هل أنت متأكد من تقفيل اليومية وتصفير العدادات الحالية؟')) return;
-
-    addTransaction('تقفيل يومية', '—', grandTotal);
-
-    shiftRevenue.desks = 0;
-    shiftRevenue.drinks = 0;
-    saveShiftRevenue();
-    renderFinanceView();
-
-    alert(`تم تقفيل اليومية بنجاح ✅\nإجمالي اليوم: ${grandTotal} EG`);
 }
 
 function formatRemainingTime(ms) {
@@ -1129,7 +1113,6 @@ function bookDesk() {
     const pkg = getPackageById(selectedPackageId);
     const desk = desks[activeDeskId - 1];
 
-    // استخراج قيمة السلايدر
     let usedFreeHoursCount = 0;
     let discountAmt = 0;
     if (freeHoursSlider) {
@@ -1288,7 +1271,6 @@ function initApp() {
     renderClientsList();
     renderFinanceView();
 
-    // تشغيل السلايدر لعرض الخصم مباشر
     if (freeHoursSlider) {
         freeHoursSlider.addEventListener('input', (e) => {
             const val = e.target.value;
@@ -1335,8 +1317,6 @@ function initApp() {
     });
 
     registerClientForm.addEventListener('submit', handleRegisterClient);
-
-    closeShiftBtn.addEventListener('click', handleCloseShift);
 
     clientListFilter.addEventListener('input', () => {
         renderClientsList(clientListFilter.value);
